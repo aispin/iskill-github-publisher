@@ -33,6 +33,8 @@
 
 > 改名时四处一起改；只改其中几处会出现「目录名与 WorkBuddy 调用名不一致」的混乱。
 
+> **前缀可自定义**：脚本默认前缀为 `iskill-`，可用 `--prefix <前缀>` 覆盖（如 `--prefix team` → 仓库名 `team-xxx`）。不传 `--prefix` 时一律走 `iskill-` 约定。
+
 ---
 
 ## 前置条件
@@ -48,7 +50,8 @@
 ```bash
 bash ~/.workbuddy/skills/iskill-github-publisher/scripts/publish.sh \
   --src ~/.workbuddy/skills/<原名字> \
-  [--name <短名>]            # 缺省=原目录名自动加 iskill- 前缀
+  [--name <短名>]            # 缺省=原目录名自动加前缀
+  [--prefix <前缀>]          # 缺省 iskill（即 iskill-），可用其它前缀覆盖，如 team
   [--out-base ~/WorkBuddy]   # 快照输出基目录，缺省 $HOME/WorkBuddy
   [--desc "一句话简介"]       # 仓库描述
   [--rename-active]          # 额外把 active 目录也改名（改变 WorkBuddy 调用名，谨慎）

@@ -23,6 +23,8 @@ agent_created: true
 
 > 改名时四处一起改；只改其中几处会在 WorkBuddy 里出现「目录名与调用名不一致」的混乱。
 
+> **前缀可自定义**：脚本默认前缀为 `iskill-`，可用 `--prefix <前缀>` 覆盖（如 `--prefix team` → 仓库名 `team-xxx`）。不传 `--prefix` 时一律走 `iskill-` 约定。
+
 ## 前置条件
 - 本机已装 `gh`：`/opt/homebrew/bin/gh`（**非交互 shell 默认 PATH 不含 Homebrew，调用必须用绝对路径**；脚本已自动回退到绝对路径）。
 - `gh auth login` 已完成（账号如 `aispin`，token 含 `repo` 权限）。
@@ -41,13 +43,14 @@ agent_created: true
 ```
 bash ~/.workbuddy/skills/iskill-github-publisher/scripts/publish.sh \
   --src ~/.workbuddy/skills/<原名字> \
-  [--name <短名>]            # 缺省=原目录名自动加 iskill- 前缀
+  [--name <短名>]            # 缺省=原目录名自动加前缀
+  [--prefix <前缀>]          # 缺省 iskill（即 iskill-），可用其它前缀覆盖，如 team
   [--out-base ~/WorkBuddy]   # 快照输出基目录，缺省 $HOME/WorkBuddy
   [--desc "一句话简介"]       # 仓库描述
   [--rename-active]          # 额外把 active 目录也改名（改变调用名，谨慎）
   [--dry-run]                # 只做快照+commit，不建仓库不推送（用于验证）
 ```
-脚本会自动：算 iskill 名 → 复制 SKILL.md/README.md/app/scripts 到快照 → 改写 SKILL.md 的 `name:` → git init+commit → gh 建仓库（不 push）→ 远程改 SSH → push → 打印地址。
+脚本会自动：算目标名（缺省 `iskill-` 前缀，`--prefix` 可覆盖）→ 复制 SKILL.md/README.md/app/scripts 到快照 → 改写 SKILL.md 的 `name:` → git init+commit → gh 建仓库（不 push）→ 远程改 SSH → push → 打印地址。
 
 ## 手动步骤（排错/自定义时参考）
 1. 决定仓库名 `iskill-<short>`；确认 GitHub 上无重名（`gh repo view <账号>/<名>` 应报 Not Found）。

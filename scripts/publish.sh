@@ -2,17 +2,17 @@
 # iskill-github-publisher · 把本地 AI skill 发布到 GitHub（iskill- 前缀 + SSH 推送）
 #
 # 用法：
-#   publish.sh --src <active skill 目录> [--name <短名>] [--out-base <目录>] [--desc "简介"] [--rename-active] [--dry-run]
+#   publish.sh --src <active skill 目录> [--name <短名>] [--prefix <前缀>] [--out-base <目录>] [--desc "简介"] [--rename-active] [--dry-run]
 #
 # 行为：
-#   1. 计算 iskill 名（--name 或 src 目录名，确保 iskill- 前缀）
-#   2. 在 <out-base>/<iskill名> 建仓库快照（复制 SKILL.md / README.md / app/ / scripts/）
-#   3. 把快照里 SKILL.md 的 name: 改成 iskill 名
+#   1. 计算目标名（--name 或 src 目录名，缺省 iskill- 前缀，可用 --prefix 覆盖）
+#   2. 在 <out-base>/<目标名> 建仓库快照（复制 SKILL.md / README.md / app/ / scripts/）
+#   3. 把快照里 SKILL.md 的 name: 改成目标名
 #   4. git init + commit（分支统一 main）
 #   5. gh repo create（公开，不自动 push）→ 已存在则复用
 #   6. 远程改 SSH，git push -u origin main
 #   7. 打印仓库地址
-#   --rename-active：额外把 src 活动目录改名为 iskill 名（改变 WorkBuddy 调用名，需谨慎）
+#   --rename-active：额外把 src 活动目录改名为目标名（改变 WorkBuddy 调用名，需谨慎）
 #   --dry-run      ：只做快照+commit，不建仓库不推送（用于验证）
 
 set -euo pipefail
@@ -22,13 +22,14 @@ GH="$(command -v gh || true)"
 [ -x /opt/homebrew/bin/gh ] && GH=/opt/homebrew/bin/gh
 [ -z "$GH" ] && { echo "✖ 找不到 gh，请先 brew install gh 并 gh auth login"; exit 1; }
 
-SRC="" NAME="" OUT_BASE="$HOME/WorkBuddy" DESC="" RENAME_ACTIVE=0 DRY_RUN=0
+SRC="" NAME="" PREFIX="iskill" OUT_BASE="$HOME/WorkBuddy" DESC="" RENAME_ACTIVE=0 DRY_RUN=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --src)        SRC="$2"; shift 2;;
     --name)       NAME="$2"; shift 2;;
     --out-base)   OUT_BASE="$2"; shift 2;;
     --desc)       DESC="$2"; shift 2;;
+    --prefix)     PREFIX="$2"; shift 2;;
     --rename-active) RENAME_ACTIVE=1; shift;;
     --dry-run)    DRY_RUN=1; shift;;
     -h|--help)    sed -n '2,14p' "$0"; exit 0;;
@@ -40,12 +41,14 @@ done
 SRC="$(cd "$SRC" && pwd)"
 [ -f "$SRC/SKILL.md" ] || { echo "✖ $SRC 不是 skill 目录（缺 SKILL.md）"; exit 1; }
 
-# 计算 iskill 名（确保 iskill- 前缀）
+# 计算目标名（缺省 iskill- 前缀，可用 --prefix 覆盖；自动补尾随 -）
+PREFIX="${PREFIX%-}"
+PREFIX_DASH="$PREFIX-"
 BASENAME="$(basename "$SRC")"
 if [ -z "$NAME" ]; then
-  if [[ "$BASENAME" == iskill-* ]]; then NAME="$BASENAME"; else NAME="iskill-$BASENAME"; fi
+  if [[ "$BASENAME" == "${PREFIX_DASH}"* ]]; then NAME="$BASENAME"; else NAME="${PREFIX_DASH}$BASENAME"; fi
 else
-  [[ "$NAME" == iskill-* ]] || NAME="iskill-$NAME"
+  [[ "$NAME" == "${PREFIX_DASH}"* ]] || NAME="${PREFIX_DASH}$NAME"
 fi
 
 # GitHub 账号（从 gh auth status 解析，不写死）
@@ -53,7 +56,7 @@ ACCOUNT="$("$GH" auth status 2>&1 | grep -oE 'Logged in to github.com account [^
 [ -z "$ACCOUNT" ] && { echo "✖ 无法从 gh auth status 获取账号，请先 gh auth login"; exit 1; }
 
 DEST="$OUT_BASE/$NAME"
-echo "▶ iskill 名 : $NAME"
+echo "▶ 目标名（前缀 ${PREFIX_DASH}）: $NAME"
 echo "▶ 账号     : $ACCOUNT"
 echo "▶ 快照目录 : $DEST"
 
@@ -86,7 +89,7 @@ b="$(git symbolic-ref --short HEAD 2>/dev/null || echo master)"
 [ "$b" != "main" ] && git branch -m main 2>/dev/null || true
 git add -A
 git -c user.name="${GIT_USER:-ZEO}" -c user.email="${GIT_EMAIL:-85879+aispin@users.noreply.github.com}" \
-    commit -q -m "feat: $NAME 初始版本（iskill- 前缀，SkillHub 认领用）"
+    commit -q -m "feat: $NAME 初始版本（${PREFIX_DASH}前缀，SkillHub 认领用）"
 echo "• 已 commit（分支 main）"
 
 if [ "$DRY_RUN" = 1 ]; then
@@ -101,7 +104,7 @@ if "$GH" repo view "$ACCOUNT/$NAME" --json name >/dev/null 2>&1; then
   echo "• 仓库已存在，复用：$ACCOUNT/$NAME"
 else
   "$GH" repo create "$NAME" --public --source=. --remote=origin --confirm \
-    --description "${DESC:-WorkBuddy AI skill（iskill 系列）。}" 2>&1 \
+    --description "${DESC:-WorkBuddy AI skill（${PREFIX_DASH}系列）。}" 2>&1 \
     || { echo "✖ gh repo create 失败"; exit 1; }
 fi
 
