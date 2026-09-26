@@ -38,6 +38,9 @@ agent_created: true
 4. **账号别写死**：从 `gh auth status` 解析 `Logged in to github.com account <账号>`，脚本自动取。
 5. **幂等**：仓库已存在时 `gh repo create` 会报错，先 `gh repo view <账号>/<名>` 探测，存在则复用。
 6. **改 active 目录名会改 WorkBuddy 调用名**：重命名 `~/.workbuddy/skills/<名>` 后，调用名随之改变，可能需要重新扫描/触发。这是可选步骤，需用户确认。
+7. **`gh repo create` 可能「假失败」**（2026-09-26 实踩）：返回 `GraphQL: Name already exists on this account`，但仓库其实已创建成功（描述、可见性均正确，远程也可能已设好）。遇到该报错先用 `gh repo view <账号>/<名> --json createdAt,description` 确认实际状态，别盲目重试或换名。
+8. **`.gitignore` 别用裸 `app/` 这类宽模式**：会连 `templates/app/` 一起排除，导致只提交了半个仓库还不易察觉。提交后必须 `git ls-files | wc -l` 核对文件数（或 `git ls-files | head` 抽查），写法用锚定根目录的 `/app/`。
+9. **沙箱环境推送需授权**：git push / gh 网络操作可能被沙箱拦截，若失败需在授权后重跑（命令本身没问题）。
 
 ## 用法（推荐：脚本）
 ```
