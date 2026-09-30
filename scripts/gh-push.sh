@@ -76,7 +76,7 @@ LOCAL_SHA="$(git rev-parse HEAD)"
 REMOTE_SHA="$(git -c "http.proxy=$PROXY" -c http.version=HTTP/1.1 -c credential.helper= \
   ls-remote "https://github.com/${SLUG}.git" "refs/heads/${BRANCH}" | awk '{print $1}')"
 if [ "$LOCAL_SHA" = "$REMOTE_SHA" ]; then
-  echo "✓ 远端已核对一致: $REMOTE_SHA（$SLUG@$BRANCH）"
+  echo "✓ 远端已核对一致: ${REMOTE_SHA}（${SLUG}@${BRANCH}）"
 else
   echo "✖ 本地与远端不一致: local=$LOCAL_SHA remote=${REMOTE_SHA:-<空>} —— 需排查（可能远端被 force-push 或推送半途失败）"
   exit 1
