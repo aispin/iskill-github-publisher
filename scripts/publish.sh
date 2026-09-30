@@ -108,10 +108,13 @@ else
     || { echo "✖ gh repo create 失败"; exit 1; }
 fi
 
-# 5) SSH 远程 + 推送
-git remote set-url origin "git@github.com:$ACCOUNT/$NAME.git" 2>/dev/null \
-  || git remote add origin "git@github.com:$ACCOUNT/$NAME.git"
-git push -u origin main 2>&1
+# 5) HTTPS 代理推送（统一配方，详见 gh-push.sh；SSH 在沙箱会话被权限墙拦，弃用）
+PROXY="${GH_PROXY:-http://127.0.0.1:10080}"
+TOKEN="$("$GH" auth token)"
+git remote set-url origin "https://github.com/$ACCOUNT/$NAME.git" 2>/dev/null \
+  || git remote add origin "https://github.com/$ACCOUNT/$NAME.git"
+git -c "http.proxy=$PROXY" -c http.version=HTTP/1.1 -c credential.helper= \
+    push -u origin main 2>&1
 
 echo ""
 echo "✓ 完成：https://github.com/$ACCOUNT/$NAME"
