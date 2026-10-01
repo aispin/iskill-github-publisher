@@ -22,6 +22,11 @@
 
 set -euo pipefail
 
+# 禁掉 git 的交互式凭据提示：token 取空/失效时直接快速失败，
+# 而不是挂在 "Username for 'https://github.com':" 等到被超时杀掉（exit 137）
+export GIT_TERMINAL_PROMPT=0
+export GIT_ASKPASS=true
+
 GH="$(command -v gh || true)"
 [ -x /opt/homebrew/bin/gh ] && GH=/opt/homebrew/bin/gh
 [ -z "$GH" ] && { echo "✖ 找不到 gh"; exit 1; }
@@ -63,6 +68,7 @@ fi
 #    -c credential.helper= （置空）必须带：否则命中 /opt/homebrew/etc/gitconfig 的
 #    osxkeychain → 沙箱拦截钥匙串 → 弹窗。gh auth token 已存明文 hosts.yml，只读文件不碰钥匙串。
 TOKEN="$("$GH" auth token)"
+[ -z "$TOKEN" ] && { echo "✖ gh auth token 为空（检查 ~/.config/gh/hosts.yml 或 gh auth login）"; exit 1; }
 echo "▶ git -c http.proxy=$PROXY -c http.version=HTTP/1.1 -c credential.helper= push → github.com/$SLUG $BRANCH"
 if ! git -c "http.proxy=$PROXY" -c http.version=HTTP/1.1 -c credential.helper= \
      push "https://${GH_USER:-aispin}:${TOKEN}@github.com/${SLUG}.git" "$BRANCH" 2>&1; then
