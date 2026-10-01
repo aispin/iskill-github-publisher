@@ -79,11 +79,18 @@ fi
 
 # ---- 4) 远端核对（唯一可信判据）----
 LOCAL_SHA="$(git rev-parse HEAD)"
-REMOTE_SHA="$(git -c "http.proxy=$PROXY" -c http.version=HTTP/1.1 -c credential.helper= \
-  ls-remote "https://github.com/${SLUG}.git" "refs/heads/${BRANCH}" | awk '{print $1}')"
-if [ "$LOCAL_SHA" = "$REMOTE_SHA" ]; then
+REMOTE_SHA=""
+for i in 1 2 3; do
+  REMOTE_SHA="$(git -c "http.proxy=$PROXY" -c http.version=HTTP/1.1 -c credential.helper= \
+    ls-remote "https://github.com/${SLUG}.git" "refs/heads/${BRANCH}" 2>/dev/null | awk '{print $1}')" || true
+  [ -n "$REMOTE_SHA" ] && break
+  # 代理偶发 SSL_ERROR_SYSCALL 会让这个只读校验也失败 → 重试，避免「推送成功却报失败」
+  [ "$i" -lt 3 ] && sleep 1
+done
+if [ "$REMOTE_SHA" = "$LOCAL_SHA" ] && [ -n "$LOCAL_SHA" ]; then
   echo "✓ 远端已核对一致: ${REMOTE_SHA}（${SLUG}@${BRANCH}）"
 else
   echo "✖ 本地与远端不一致: local=$LOCAL_SHA remote=${REMOTE_SHA:-<空>} —— 需排查（可能远端被 force-push 或推送半途失败）"
+  echo "  gh api repos/${SLUG}/commits?per_page=1 --jq '.[0].sha'   # API 通道可作旁证"
   exit 1
 fi
