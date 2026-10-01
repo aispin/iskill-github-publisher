@@ -64,33 +64,40 @@ if [ "$CUR_EMAIL" != "$GH_EMAIL" ] || [ "$CUR_NAME" != "$WANT_NAME" ]; then
   git config user.email "$GH_EMAIL"
 fi
 
-# ---- 3) 统一推送：代理 + HTTP/1.1 + 禁用 credential.helper + token 内嵌 ----
+# ---- 3) 统一推送：代理 + 禁用 credential.helper + token 内嵌 ----
 #    -c credential.helper= （置空）必须带：否则命中 /opt/homebrew/etc/gitconfig 的
 #    osxkeychain → 沙箱拦截钥匙串 → 弹窗。gh auth token 已存明文 hosts.yml，只读文件不碰钥匙串。
+#    HTTP 版本做两档尝试：HTTP/1.1 是历史稳定档；2026-10-01 实测它也会间歇
+#    "send-pack: unexpected disconnect"，同通道 HTTP/2 反而成功 → 失败后自动换档重试。
+#    每次尝试后都核对远端 sha，唯一可信判据（git 输出会假失败/假成功）。
 TOKEN="$("$GH" auth token)"
 [ -z "$TOKEN" ] && { echo "✖ gh auth token 为空（检查 ~/.config/gh/hosts.yml 或 gh auth login）"; exit 1; }
-echo "▶ git -c http.proxy=$PROXY -c http.version=HTTP/1.1 -c credential.helper= push → github.com/$SLUG $BRANCH"
-if ! git -c "http.proxy=$PROXY" -c http.version=HTTP/1.1 -c credential.helper= \
-     push "https://${GH_USER:-aispin}:${TOKEN}@github.com/${SLUG}.git" "$BRANCH" 2>&1; then
-  echo "✖ 推送失败。注意：失败信息有时是假的（沙箱重跑/连接中断），先核对远端："
-  echo "  git -c http.proxy=$PROXY -c http.version=HTTP/1.1 -c credential.helper= ls-remote https://github.com/${SLUG}.git refs/heads/${BRANCH}"
-  exit 1
-fi
 
-# ---- 4) 远端核对（唯一可信判据）----
 LOCAL_SHA="$(git rev-parse HEAD)"
-REMOTE_SHA=""
-for i in 1 2 3; do
-  REMOTE_SHA="$(git -c "http.proxy=$PROXY" -c http.version=HTTP/1.1 -c credential.helper= \
-    ls-remote "https://github.com/${SLUG}.git" "refs/heads/${BRANCH}" 2>/dev/null | awk '{print $1}')" || true
-  [ -n "$REMOTE_SHA" ] && break
-  # 代理偶发 SSL_ERROR_SYSCALL 会让这个只读校验也失败 → 重试，避免「推送成功却报失败」
-  [ "$i" -lt 3 ] && sleep 1
+PUSH_URL="https://${GH_USER:-aispin}:${TOKEN}@github.com/${SLUG}.git"
+check_remote() {
+  git -c "http.proxy=$PROXY" -c credential.helper= \
+    ls-remote "https://github.com/${SLUG}.git" "refs/heads/${BRANCH}" 2>/dev/null | awk '{print $1}'
+}
+
+OK=0
+for VER in HTTP/1.1 ""; do
+  LABEL="${VER:-HTTP/2(默认)}"
+  echo "▶ git push (proxy=$PROXY version=${LABEL}) → github.com/$SLUG $BRANCH"
+  git -c "http.proxy=$PROXY" ${VER:+-c "http.version=$VER"} -c credential.helper= \
+       push "$PUSH_URL" "$BRANCH" 2>&1 || echo "⚠ push 命令报错（可能是假失败，以 sha 为准）"
+  for i in 1 2 3; do
+    REMOTE_SHA="$(check_remote)" && [ -n "$REMOTE_SHA" ] && break
+    [ "$i" -lt 3 ] && sleep 1    # 代理偶发 SSL_ERROR_SYSCALL → 重试
+  done
+  if [ -n "$REMOTE_SHA" ] && [ "$REMOTE_SHA" = "$LOCAL_SHA" ]; then
+    echo "✓ 远端已核对一致: ${REMOTE_SHA}（${SLUG}@${BRANCH}，via ${LABEL}）"
+    OK=1
+    break
+  fi
 done
-if [ "$REMOTE_SHA" = "$LOCAL_SHA" ] && [ -n "$LOCAL_SHA" ]; then
-  echo "✓ 远端已核对一致: ${REMOTE_SHA}（${SLUG}@${BRANCH}）"
-else
-  echo "✖ 本地与远端不一致: local=$LOCAL_SHA remote=${REMOTE_SHA:-<空>} —— 需排查（可能远端被 force-push 或推送半途失败）"
+if [ "$OK" -ne 1 ]; then
+  echo "✖ 两档 HTTP 版本均未核对一致: local=$LOCAL_SHA remote=${REMOTE_SHA:-<空>}"
   echo "  gh api repos/${SLUG}/commits?per_page=1 --jq '.[0].sha'   # API 通道可作旁证"
   exit 1
 fi
