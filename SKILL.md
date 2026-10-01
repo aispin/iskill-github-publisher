@@ -52,6 +52,50 @@ git -c http.proxy=http://127.0.0.1:10080 -c http.version=HTTP/1.1 -c credential.
 
 **推送结果以 `git ls-remote` 核对远端 sha 为唯一可信判据**——git push 的输出/退出码在沙箱重跑场景下会「假失败」（命令实际已成功）或「假成功」（远端是旧 sha）。
 
+### 代理会间歇 408 / 断流 —— 必须多轮重试（2026-10-02 批量推送实锤）
+
+10080 虽是最稳通道，但**上传仍会偶发被打断**，报错长这样：
+
+```
+error: RPC failed; HTTP 408 curl 22 The requested URL returned error: 408
+send-pack: unexpected disconnect while reading sideband packet
+fatal: the remote end hung up unexpectedly
+Everything up-to-date          ← 假象！远端其实还是空的
+```
+
+- ⚠️ **`Everything up-to-date` 在这里是误导**：它紧跟在 RPC 失败之后，看着像「已经推过了」，
+  实际远端 `<空>`。**只认 `ls-remote` / `gh api repos/<slug>/commits/<br>` 的 sha**。
+- **打包体积越大越容易中招**：同一批里，只改文件模式位的小仓库一次通；
+  带几百 KB 二进制（PNG 样本图）的仓库连挂 4–5 次，第 3 轮才过。
+- 破法一：**多轮重试**（3–5 轮、间隔 2–3s）。单轮失败直接重来，别急着换方案。
+- 破法二：**加大 `http.postBuffer`**（关掉 chunked 上传）：
+  `git -c http.postBuffer=524288000 -c http.version=HTTP/1.1 … push`。
+- 批量推多个仓库务必写成 `for` 循环 + sha 判定，否则某一条失败会被后面的输出淹没。
+- 单条命令给足超时：慢通道下 3 轮重试很容易超过默认超时被 SIGTERM（退出码 137），
+  而**被杀掉的那一轮往往已经成功了** —— 收尾一定要再全量核对一次 sha，别凭输出下结论。
+
+### 新建仓库（本地已有 git、远端还没有）
+
+用 `gh repo create` **不带 `--push` / `--source`** 先建仓，再走 `gh-push.sh` 显式给 `owner/repo`：
+
+```bash
+/opt/homebrew/bin/gh repo create aispin/<name> --public --description "<一句话>"
+bash <publisher>/scripts/gh-push.sh <本地目录> main aispin/<name>
+```
+
+拆成两步的价值：建仓失败与推送失败可分辨（挂在一起时看不出是「没建成」还是「没推上」），
+且推送始终走那一条经过验证的通道，不在本地留 origin 记录。
+
+### 推完要发 Pages？
+
+站点配置（根目录 / docs / gh-pages / workflow 四种模式）用 promo-page 技能的脚本，
+默认 dry-run，确认后加 `--apply`：
+
+```bash
+bash <promo-page>/scripts/pages.sh status <owner/repo>
+bash <promo-page>/scripts/pages.sh root   <owner/repo> --apply   # 发布源 = main 分支根目录
+```
+
 ### 为什么不用 SSH？HTTPS+token 方案安全性如何？（2026-09-30 评估）
 | | SSH | HTTPS+token 内嵌 |
 |---|---|---|
@@ -64,7 +108,7 @@ git -c http.proxy=http://127.0.0.1:10080 -c http.version=HTTP/1.1 -c credential.
 
 ## 踩坑清单（重要，别再踩）
 1. **gh 路径**：非交互 shell 里 `gh` 可能 `command not found`。一律用 `/opt/homebrew/bin/gh`（脚本已处理）。
-2. **`gh repo create --push` 会静默失败**：之前一次空输出、没建仓库、没设远程。改用 `gh repo create <名> --public --source=. --remote=origin --confirm`（**不带 --push**）先建仓库，再手动 `git push`。
+2. **`gh repo create --push` 会静默失败**：之前一次空输出、没建仓库、没设远程。改用 `gh repo create <名> --public --source=. --remote=origin --confirm`（**不带 --push**）先建仓库，再手动 `git push`。（更推荐「建仓 / 推送」彻底拆开的那套，见上「新建仓库」节 —— 连 `origin` 都不必设。）
 3. **远程改 SSH**：`gh repo create` 默认把远程设成 https，但用户用 SSH。建完改 `git remote set-url origin git@github.com:<账号>/<名>.git` 再 push。
 4. **账号别写死**：从 `gh auth status` 解析 `Logged in to github.com account <账号>`，脚本自动取。
 5. **幂等**：仓库已存在时 `gh repo create` 会报错，先 `gh repo view <账号>/<名>` 探测，存在则复用。
