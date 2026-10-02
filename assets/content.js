@@ -37,15 +37,19 @@ window.PROMO = {
         meta2: "内置踩坑清单",
         meta3: "MIT 许可"
       },
-      terminal: {
-        title: "zsh — iskill-github-publisher",
-        lines: [
-          [{ t: "$ ", c: "p" }, { t: "bash scripts/publish.sh --src ~/.workbuddy/skills/my-skill --dry-run", c: "k" }],
-          [{ t: "✓ ", c: "p" }, { t: "快照 + commit 完成（未碰 GitHub）", c: "s" }],
-          [{ t: "$ ", c: "p" }, { t: "bash scripts/publish.sh --src ~/.workbuddy/skills/my-skill --desc \"一句话简介\"", c: "k" }],
-          [{ t: "✓ ", c: "p" }, { t: "https://github.com/aispin/iskill-my-skill", c: "s" }]
+      chat: {
+        title: "AI Agent · 对话现场",
+        status: "在线",
+        userLabel: "你",
+        agentLabel: "AI",
+        messages: [
+          { role: "user", text: "把 iskill-xxx 发布到 GitHub，准备 SkillHub 认领" },
+          { role: "agent", text: "先核对四处命名一致（仓库 / 本地目录 / active 目录 / SKILL.md 的 name），建仓后走统一通道推；推完以远端 sha 为准核对。", tag: "已读 踩坑清单 13 条" },
+          { role: "user", text: "推送报 408 了，是不是失败了？" },
+          { role: "agent", text: "代理会间歇断流，多轮重试 + 加大 postBuffer 就好。别信 `Everything up-to-date`——那是误导，只认 ls-remote 的 sha。" }
         ]
       },
+
 
       stats: [
         { value: "4", label: "处命名必须一致", note: "仓库名 / 本地目录 / active 目录 / SKILL.md 的 name" },
@@ -147,15 +151,19 @@ window.PROMO = {
         meta2: "Traps documented",
         meta3: "MIT licensed"
       },
-      terminal: {
-        title: "zsh — iskill-github-publisher",
-        lines: [
-          [{ t: "$ ", c: "p" }, { t: "bash scripts/publish.sh --src ~/.workbuddy/skills/my-skill --dry-run", c: "k" }],
-          [{ t: "✓ ", c: "p" }, { t: "snapshot + commit done (GitHub untouched)", c: "s" }],
-          [{ t: "$ ", c: "p" }, { t: "bash scripts/publish.sh --src ~/.workbuddy/skills/my-skill --desc \"one-liner\"", c: "k" }],
-          [{ t: "✓ ", c: "p" }, { t: "https://github.com/aispin/iskill-my-skill", c: "s" }]
+      chat: {
+        title: "AI Agent · live session",
+        status: "online",
+        userLabel: "You",
+        agentLabel: "AI",
+        messages: [
+          { role: "user", text: "Publish iskill-xxx to GitHub and prepare it for SkillHub claiming" },
+          { role: "agent", text: "First I check the four names agree (repo / local dir / active dir / SKILL.md name), create the repo, then push over the one proven channel and verify against the remote sha.", tag: "read 13 pitfalls" },
+          { role: "user", text: "The push failed with 408 — did it?" },
+          { role: "agent", text: "The proxy drops uploads now and then: retry a few rounds with a bigger postBuffer. Ignore `Everything up-to-date` — it lies here. Only the ls-remote sha counts." }
         ]
       },
+
 
       stats: [
         { value: "4", label: "names that must match", note: "repo / local dir / active dir / SKILL.md name" },
