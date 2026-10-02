@@ -100,13 +100,14 @@ window.PROMO = {
       steps: {
         eyebrow: "上手",
         title: "三步跑起来",
-        sub: "",
+        sub: "命令由 agent 跑，你只说要什么、看结果。",
         items: [
           { title: "交给 AI 装", desc: "把这句话粘进对话框，agent 会自己拉代码、读文档，再告诉你用法。", codeKey: "install" },
-          { title: "先 dry-run 验证", desc: "只做快照 + commit，不碰 GitHub，用来确认命名与文件都对。", codeName: "bash", code: "bash scripts/publish.sh --src ~/.workbuddy/skills/my-skill --dry-run" },
-          { title: "正式发布", desc: "确认无误后建仓 + 推送，脚本会打印仓库地址。", codeName: "bash", code: "bash scripts/publish.sh --src ~/.workbuddy/skills/my-skill --desc \"一句话简介\"" }
+          { title: "说要发布哪个技能", desc: "建仓、推送、远端 sha 核对都是它做；推送通道与隐私邮箱的坑它已经自带。", codeName: "prompt", code: "把 ~/.workbuddy/skills/iskill-xxx 发布到 GitHub，仓库名 iskill-xxx，再准备 SkillHub 认领。" },
+          { title: "本人去点认领", desc: "推送它做完了，SkillHub 认领要你登录点一下——这是整个流程里唯一必须由本人操作的步骤。" }
         ]
       },
+
 
       faq: {
         eyebrow: "问答",
@@ -209,13 +210,14 @@ window.PROMO = {
       steps: {
         eyebrow: "Get started",
         title: "Up and running in three steps",
-        sub: "",
+        sub: "The agent runs the commands. You say what you want and check the result.",
         items: [
-          { title: "Let your agent install it", desc: "Paste the line into the chat — it clones the repo, reads the docs and tells you how to use it.", codeKey: "install" },
-          { title: "Dry-run first", desc: "Snapshot + commit only, no GitHub — good for checking names and files.", codeName: "bash", code: "bash scripts/publish.sh --src ~/.workbuddy/skills/my-skill --dry-run" },
-          { title: "Publish for real", desc: "Create the repo and push; the script prints the URL.", codeName: "bash", code: "bash scripts/publish.sh --src ~/.workbuddy/skills/my-skill --desc \"one-liner\"" }
+          { title: "Let your agent install it", desc: "Paste the line into the chat — it clones the repo, reads the docs, and tells you how to use it.", codeKey: "install" },
+          { title: "Say which skill to publish", desc: "Repo creation, push and remote-sha verification are on it — it already knows the proxy and private-email pitfalls.", codeName: "prompt", code: "Publish ~/.workbuddy/skills/iskill-xxx to GitHub as iskill-xxx and prepare it for SkillHub claiming." },
+          { title: "Claim it yourself", desc: "Pushing is done; claiming on SkillHub needs your own login. It's the only step that can't be delegated." }
         ]
       },
+
 
       faq: {
         eyebrow: "FAQ",
