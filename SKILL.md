@@ -120,6 +120,27 @@ bash <promo-page>/scripts/pages.sh root   <owner/repo> --apply   # 发布源 = m
 11. **钥匙串弹窗双根因**（2026-09-30 实锤）：① Homebrew 系统级 `/opt/homebrew/etc/gitconfig` 自带 `credential.helper = osxkeychain`——即使全局/仓库配置没有，HTTPS push 也会命中它（这就是 token 迁明文后仍偶发弹窗的原因，务必 `-c credential.helper=` 置空）；② gh 的 token 已迁明文 hosts.yml，`gh auth token` 只读文件。两处都治好后，**漏要素 1 就会复发**。
 12. **提交身份回退**（2026-09-28 实锤）：仓库本地 `user.name/email` 可能静默丢失，commit 回退全局 `Levin/mamboer@live.com` 造成真邮箱泄漏。gh-push.sh 已内置守卫（不一致即重设并提示）；手动 commit 前先 `git config user.email` 核对。
 
+13. **`git-filter-repo` 会静默抹掉仓库的 remote**（2026-10-02 实锤，影响面是**仓库级批量**）：为清泄漏邮箱对多个仓库跑过 filter-repo 后，25 个技能仓库里 **15 个 `git remote` 为空**，但远端内容早已推送成功（sha 完全一致）—— 症状极隐蔽：`git push` 直接报「No configured push destination」，且不报任何 filter-repo 相关线索。
+    **每次 filter-repo 之后必做这项体检**（`ISkills/` 下批量）：
+
+    ```bash
+    cd ~/WorkBuddy/ISkills
+    # ① 补回缺失的 remote（统一 HTTPS，别用 SSH：沙箱内会弹提权确认）
+    for d in iskill-*; do
+      [ -d "$d/.git" ] || continue
+      [ -z "$(git -C "$d" remote get-url origin 2>/dev/null)" ] && git -C "$d" remote add origin "https://github.com/aispin/$d.git"
+    done
+    # ② 逐个核对本地 HEAD vs 远端默认分支 sha（只认 sha，不认 git 输出的成败）
+    for d in iskill-*; do
+      L=$(git -C "$d" rev-parse HEAD | cut -c1-12)
+      b=$(/opt/homebrew/bin/gh api "repos/aispin/$d" --jq .default_branch)
+      R=$(/opt/homebrew/bin/gh api "repos/aispin/$d/commits/$b" --jq .sha | cut -c1-12)
+      [ "$L" = "$R" ] && echo "SYNC $d $L" || echo "DIFF $d local=$L remote=$R"
+    done
+    ```
+
+    同时记得补 `user.name/email`（filter-repo 一并抹）。判断「仓库是不是真推送成功」永远用 `gh api .../commits/<branch> --jq .sha` 对比本地 HEAD，别信 `git push` 的 `Everything up-to-date`。
+
 ## 用法（推荐：脚本）
 ```
 bash ~/.workbuddy/skills/iskill-github-publisher/scripts/publish.sh \
