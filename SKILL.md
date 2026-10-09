@@ -165,3 +165,15 @@ bash ~/.workbuddy/skills/iskill-github-publisher/scripts/publish.sh \
 
 ## SkillHub 认领后续（需用户在浏览器完成）
 登录 SkillHub（WorkBuddy 内：专家 → 技能 → 发布；或 skillhub.cn）→ 「**从 GitHub 导入/认领**」→ 授权 GitHub → 选中该仓库 → 填信息（名称/简介/使用示例/分类如「教育/语言学习」/权限声明写「本地文件读写 + 执行本地脚本」、无网络权限）→ 提交审核（1–3 工作日）→ 通过后上架，全平台可搜可装。
+
+## 依赖同步
+
+本仓库 `promo-page/assets/{app.js,style.css,icons.js}` 是 [iskill-promo-page](https://github.com/aispin/iskill-promo-page)
+模板引擎的 vendored 副本（锁定版本见 `package.json` 的 `iskillDeps`），**不要手改**——
+去真源仓库改并升 `@iskill-version`，再用 iskill-dep-sync 同步回来（本机无该工具时按下面自举）：
+
+```bash
+T="$HOME/.workbuddy/skills/iskill-dep-sync/scripts/skill-deps.mjs"
+[ -f "$T" ] || { TMP="$(mktemp -d)"; curl -fsSL "https://raw.githubusercontent.com/aispin/iskill-dep-sync/HEAD/scripts/skill-deps.mjs" -o "$TMP/skill-deps.mjs"; T="$TMP/skill-deps.mjs"; }
+node "$T" check "$(pwd)"     # 漂移检测；node "$T" sync "$(pwd)" 恢复/升级；node "$T" env "$(pwd)" 冷启动自检
+```
